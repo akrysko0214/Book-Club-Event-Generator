@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const features = [
   {
     title: "A custom event theme",
@@ -16,7 +18,22 @@ const features = [
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-amber-50 text-stone-900">
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center px-6 py-20 text-center">
+      <header className="mx-auto flex w-full max-w-4xl justify-end gap-3 px-6 pt-6">
+        <Link
+          href="/sign-in"
+          className="rounded-lg px-4 py-2 font-semibold hover:bg-amber-100"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/sign-up"
+          className="rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white hover:bg-stone-700"
+        >
+          Create account
+        </Link>
+      </header>
+
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center px-6 py-16 text-center">
         <p className="mb-4 rounded-full bg-amber-200 px-4 py-1 text-sm font-semibold uppercase tracking-wide text-amber-900">
           AI-powered book club planning
         </p>
