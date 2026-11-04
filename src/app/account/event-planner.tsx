@@ -1,7 +1,15 @@
 "use client";
 
 import { useActionState } from "react";
-import { generateEventPlan, type EventPlan, type PlanState } from "./actions";
+import {
+  generateEventPlan,
+  type EventPlan,
+  type PlanState,
+  type PlanValues,
+} from "./actions";
+
+const inputClass =
+  "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200";
 
 export default function EventPlanner() {
   const [state, formAction, pending] = useActionState<PlanState, FormData>(
@@ -18,24 +26,51 @@ export default function EventPlanner() {
         <p className="mt-1 text-sm text-stone-600">
           Enter a title (and author, if you like), and AI will plan your event.
         </p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
-            id="book"
-            name="book"
-            required
-            maxLength={200}
-            defaultValue={state.book}
-            placeholder="e.g. The Night Circus by Erin Morgenstern"
-            className="flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-          />
-          <button
-            type="submit"
-            disabled={pending}
-            className="rounded-lg bg-stone-900 px-5 py-2 font-semibold text-white hover:bg-stone-700 disabled:opacity-60"
-          >
-            {pending ? "Planning…" : "Generate event"}
-          </button>
+        <input
+          id="book"
+          name="book"
+          required
+          maxLength={200}
+          defaultValue={state.values?.book}
+          placeholder="e.g. The Night Circus by Erin Morgenstern"
+          className={`mt-4 ${inputClass}`}
+        />
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-[10rem_1fr]">
+          <label className="block text-sm font-medium">
+            Number of guests
+            <input
+              name="guests"
+              type="number"
+              min={1}
+              max={500}
+              defaultValue={state.values?.guests}
+              placeholder="e.g. 12"
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+          <label className="block text-sm font-medium">
+            Where will it be held?
+            <input
+              name="venue"
+              maxLength={150}
+              defaultValue={state.values?.venue}
+              placeholder="e.g. my apartment, library meeting room, backyard"
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
         </div>
+        <p className="mt-2 text-xs text-stone-500">
+          Optional. The plan scales snacks, drinks, decorations and activities to fit.
+        </p>
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="mt-4 w-full rounded-lg bg-stone-900 px-5 py-2.5 font-semibold text-white hover:bg-stone-700 disabled:opacity-60 sm:w-auto"
+        >
+          {pending ? "Planning…" : "Generate event"}
+        </button>
         {pending && (
           <p className="mt-3 text-sm text-stone-600">
             Creating your custom event. This can take up to a minute…
@@ -48,15 +83,24 @@ export default function EventPlanner() {
         )}
       </form>
 
-      {state.plan && !pending && <PlanResults plan={state.plan} />}
+      {state.plan && state.values && !pending && (
+        <PlanResults plan={state.plan} values={state.values} />
+      )}
     </div>
   );
 }
 
-function PlanResults({ plan }: { plan: EventPlan }) {
+function sizedFor({ guests, venue }: PlanValues) {
+  const parts = [guests && `${guests} guests`, venue && `at ${venue}`].filter(Boolean);
+  return parts.length ? `Sized for ${parts.join(" ")}` : "";
+}
+
+function PlanResults({ plan, values }: { plan: EventPlan; values: PlanValues }) {
+  const sizeNote = sizedFor(values);
   return (
     <div className="mt-8 space-y-6">
       <div className="rounded-2xl bg-amber-100 p-6">
+        {sizeNote && <p className="mb-2 text-sm text-amber-900">{sizeNote}</p>}
         <p className="text-sm font-semibold uppercase tracking-wide text-amber-900">
           Event plan for {plan.book.title} by {plan.book.author}
         </p>
@@ -78,6 +122,9 @@ function PlanResults({ plan }: { plan: EventPlan }) {
           <Ideas items={plan.drinks} />
         </Section>
       </div>
+      <Section title="Hosting tips">
+        <List items={plan.hostingTips} />
+      </Section>
       <Section title="Discussion prompts">
         <ol className="list-decimal space-y-2 pl-5 text-stone-700">
           {plan.discussionPrompts.map((prompt) => (
