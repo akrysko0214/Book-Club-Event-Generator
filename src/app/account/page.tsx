@@ -4,14 +4,15 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
+import EventPlanner from "./event-planner";
 import SignOutButton from "./sign-out-button";
 
 export const metadata: Metadata = { title: "Your account · Book Club Event Generator" };
 
 export default function AccountPage() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-amber-50 px-6 py-16 text-stone-900">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-amber-100">
+    <div className="flex flex-1 flex-col bg-amber-50 px-6 py-10 text-stone-900">
+      <div className="mx-auto w-full max-w-3xl">
         <Link href="/" className="text-sm font-semibold text-amber-800">
           ← Book Club Event Generator
         </Link>
@@ -33,15 +34,14 @@ async function AccountDetails() {
   const { user } = session;
   return (
     <>
-      <h1 className="mt-4 text-3xl font-bold">Hi, {user.name}!</h1>
-      <p className="mt-2 text-stone-600">You&apos;re signed in as {user.email}.</p>
-      <p className="mt-4 text-stone-600">
-        Soon you&apos;ll be able to enter your club&apos;s current book here
-        and get a custom event plan.
-      </p>
-      <div className="mt-6">
+      <div className="mt-4 mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Hi, {user.name}!</h1>
+          <p className="mt-1 text-stone-600">You&apos;re signed in as {user.email}.</p>
+        </div>
         <SignOutButton />
       </div>
+      <EventPlanner />
     </>
   );
 }
