@@ -5,6 +5,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { hasActiveSubscription } from "@/lib/subscription";
 
 const Idea = z.object({
   name: z.string(),
@@ -66,10 +67,15 @@ export async function generateEventPlan(
   _previous: PlanState,
   formData: FormData,
 ): Promise<PlanState> {
-  // Only signed-in users can generate plans, which keeps API costs in check.
-  const session = await auth.api.getSession({ headers: await headers() });
+  // Only signed-in subscribers can generate plans, which keeps API costs in
+  // check. This check runs on the server, so it can't be skipped.
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session) {
     return { error: "Please sign in to generate an event plan." };
+  }
+  if (!(await hasActiveSubscription(requestHeaders))) {
+    return { error: "Subscribe to Book Club Plus to generate event plans." };
   }
 
   const values: PlanValues = {

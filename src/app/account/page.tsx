@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
+import { hasActiveSubscription } from "@/lib/subscription";
+import { ManageBillingButton, SubscribeCard } from "./billing";
 import EventPlanner from "./event-planner";
 import SignOutButton from "./sign-out-button";
 
@@ -26,12 +28,16 @@ export default function AccountPage() {
 }
 
 async function AccountDetails() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session) {
     redirect("/sign-in");
   }
 
   const { user } = session;
+  const subscribed = await hasActiveSubscription(requestHeaders);
+  const testMode = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") ?? false;
+
   return (
     <>
       <div className="mt-4 mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -41,7 +47,21 @@ async function AccountDetails() {
         </div>
         <SignOutButton />
       </div>
-      <EventPlanner />
+
+      {subscribed ? (
+        <>
+          <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl bg-white px-6 py-4 shadow-sm ring-1 ring-amber-100">
+            <p className="text-stone-700">
+              <span className="font-semibold text-stone-900">Book Club Plus</span> ·
+              $9.99/month · Active
+            </p>
+            <ManageBillingButton />
+          </div>
+          <EventPlanner />
+        </>
+      ) : (
+        <SubscribeCard testMode={testMode} />
+      )}
     </>
   );
 }

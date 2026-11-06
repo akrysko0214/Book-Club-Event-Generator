@@ -66,6 +66,19 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        <div className="mt-12 rounded-2xl bg-white px-8 py-6 shadow-sm ring-1 ring-amber-100">
+          <p className="text-lg">
+            <span className="font-bold">Book Club Plus</span>: unlimited event
+            plans for <span className="font-bold">$9.99/month</span>. Cancel anytime.
+          </p>
+          <Link
+            href="/sign-up"
+            className="mt-4 inline-block rounded-lg bg-stone-900 px-5 py-2.5 font-semibold text-white hover:bg-stone-700"
+          >
+            Get started
+          </Link>
+        </div>
       </main>
 
       <footer className="border-t border-amber-200 bg-amber-100 px-6 py-10 text-center">
