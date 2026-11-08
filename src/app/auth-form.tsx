@@ -47,7 +47,7 @@ export default function AuthForm({ mode }: { mode: Mode }) {
     <div className="flex flex-1 items-center justify-center bg-amber-50 px-6 py-16 text-stone-900">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-amber-100">
         <Link href="/" className="text-sm font-semibold text-amber-800">
-          ← Book Club Event Generator
+          ← Booked and Busy
         </Link>
         <h1 className="mt-4 text-3xl font-bold">
           {isSignUp ? "Create your account" : "Welcome back"}

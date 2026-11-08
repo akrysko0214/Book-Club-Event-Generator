@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import AuthForm from "../auth-form";
 
-export const metadata: Metadata = { title: "Create account · Book Club Event Generator" };
+export const metadata: Metadata = { title: "Create account · Booked and Busy" };
 
 export default function SignUpPage() {
   return <AuthForm mode="sign-up" />;

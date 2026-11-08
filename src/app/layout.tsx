@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Book Club Event Generator",
-  description: "AI-powered planning for book club meetings.",
+  title: "Booked and Busy",
+  description: "AI-powered themed event planning for book lovers and book clubs.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -9,14 +9,14 @@ import { ManageBillingButton, SubscribeCard } from "./billing";
 import EventPlanner from "./event-planner";
 import SignOutButton from "./sign-out-button";
 
-export const metadata: Metadata = { title: "Your account · Book Club Event Generator" };
+export const metadata: Metadata = { title: "Your account · Booked and Busy" };
 
 export default function AccountPage() {
   return (
     <div className="flex flex-1 flex-col bg-amber-50 px-6 py-10 text-stone-900">
       <div className="mx-auto w-full max-w-3xl">
         <Link href="/" className="text-sm font-semibold text-amber-800">
-          ← Book Club Event Generator
+          ← Booked and Busy
         </Link>
         {/* Reading the session happens per request, so it streams in here. */}
         <Suspense fallback={<p className="mt-4 text-stone-600">Loading your account…</p>}>
