@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Bookshelf, BookScene } from "./book-art";
 
 const features = [
   {
@@ -52,6 +53,8 @@ export default function Home() {
         <h1 className="text-4xl font-bold leading-tight sm:text-6xl">
           Booked and Busy
         </h1>
+
+        <BookScene className="mt-8 w-full max-w-md" />
 
         <p className="mt-6 max-w-2xl text-lg leading-8 text-stone-700 sm:text-xl">
           Planning a book event shouldn&apos;t feel like homework. Just enter
@@ -115,6 +118,10 @@ export default function Home() {
           </Link>
         </div>
       </main>
+
+      <div className="mx-auto w-full max-w-4xl px-6">
+        <Bookshelf className="w-full" />
+      </div>
 
       <footer className="border-t border-amber-200 bg-amber-100 px-6 py-10 text-center">
         <p className="text-base text-stone-600">Created by</p>
