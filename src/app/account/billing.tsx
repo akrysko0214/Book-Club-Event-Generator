@@ -1,7 +1,10 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { authClient } from "@/lib/auth-client";
+import { startDemoCheckout } from "./demo-checkout";
 
 const PLAN_NAME = "plus";
 
@@ -80,6 +83,48 @@ export function ManageBillingButton() {
       className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold hover:bg-stone-100 disabled:opacity-60"
     >
       {pending ? "Opening…" : "Manage billing"}
+    </button>
+  );
+}
+
+// Shown only to the demo account in test mode: opens a real Stripe checkout
+// page so graders can see payments working without a real card.
+export function DemoCheckoutCard() {
+  const completed = useSearchParams().get("demo_checkout") === "success";
+
+  return (
+    <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-amber-100">
+      <p className="text-sm font-semibold uppercase tracking-wide text-amber-800">
+        Demo account
+      </p>
+      <h2 className="mt-1 text-xl font-semibold">Try the Stripe checkout</h2>
+      <p className="mt-2 text-stone-700">
+        This account already has full paid access. Use this button to open the
+        real $9.99/month checkout page that new subscribers see. You can look
+        around and go back, or finish with the test card below.
+      </p>
+      {completed && (
+        <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+          Test checkout completed. No real money was charged.
+        </p>
+      )}
+      <form action={startDemoCheckout}>
+        <DemoCheckoutButton />
+      </form>
+      <TestModeNote />
+    </div>
+  );
+}
+
+function DemoCheckoutButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="mt-4 rounded-lg bg-stone-900 px-5 py-2.5 font-semibold text-white hover:bg-stone-700 disabled:opacity-60"
+    >
+      {pending ? "Opening checkout…" : "Open Stripe checkout"}
     </button>
   );
 }

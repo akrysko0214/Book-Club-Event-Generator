@@ -3,9 +3,9 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { auth } from "@/lib/auth";
+import { auth, DEMO_EMAIL, stripeTestMode } from "@/lib/auth";
 import { hasActiveSubscription } from "@/lib/subscription";
-import { ManageBillingButton, SubscribeCard } from "./billing";
+import { DemoCheckoutCard, ManageBillingButton, SubscribeCard } from "./billing";
 import EventPlanner from "./event-planner";
 import SignOutButton from "./sign-out-button";
 
@@ -36,7 +36,7 @@ async function AccountDetails() {
 
   const { user } = session;
   const subscribed = await hasActiveSubscription(requestHeaders);
-  const testMode = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") ?? false;
+  const showDemoCheckout = user.email === DEMO_EMAIL && stripeTestMode;
 
   return (
     <>
@@ -57,10 +57,11 @@ async function AccountDetails() {
             </p>
             <ManageBillingButton />
           </div>
+          {showDemoCheckout && <DemoCheckoutCard />}
           <EventPlanner />
         </>
       ) : (
-        <SubscribeCard testMode={testMode} />
+        <SubscribeCard testMode={stripeTestMode} />
       )}
     </>
   );

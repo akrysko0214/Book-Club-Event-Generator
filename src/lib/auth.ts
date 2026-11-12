@@ -8,6 +8,16 @@ import Stripe from "stripe";
 // dashboard; STRIPE_PRICE_ID points at it.
 export const PLAN_NAME = "plus";
 
+// The demo account graders sign in with. It has a real (test-mode)
+// subscription, and also gets a button to try the Stripe checkout page.
+export const DEMO_EMAIL = "demo@demo.com";
+
+export const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+// True while using Stripe test keys, where only fake cards work.
+export const stripeTestMode =
+  process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") ?? false;
+
 // Server-side auth setup. Accounts, sessions and subscriptions are stored in
 // the Neon database at DATABASE_URL. Better Auth also reads
 // BETTER_AUTH_SECRET and BETTER_AUTH_URL from the environment.
@@ -20,7 +30,7 @@ export const auth = betterAuth({
     // Handles Stripe customers, checkout, the billing portal and webhooks.
     // Use a test-mode key (sk_test_...) to practice with fake cards.
     stripe({
-      stripeClient: new Stripe(process.env.STRIPE_SECRET_KEY!),
+      stripeClient,
       stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
       createCustomerOnSignUp: true,
       subscription: {
