@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { auth, db } from "@/lib/auth";
 import { hasActiveSubscription } from "@/lib/subscription";
 
 const Idea = z.object({
@@ -81,6 +81,88 @@ Include:
 
 Keep ideas practical and budget-friendly. If you don't recognize the book, build the plan from what the title suggests and say so in the theme description.`;
 
+// Genres to steer toward when the user lets us choose without preferences,
+// so picks don't keep landing on the same few famous books.
+const GENRES = [
+  "literary fiction",
+  "historical fiction",
+  "cozy mystery",
+  "thriller",
+  "fantasy",
+  "science fiction",
+  "romance",
+  "romantic comedy",
+  "memoir",
+  "narrative nonfiction",
+  "classic novel",
+  "magical realism",
+  "gothic or horror",
+  "contemporary fiction",
+  "young adult",
+  "graphic novel",
+  "short story collection",
+  "humorous fiction",
+  "adventure",
+  "translated fiction",
+];
+
+// Matches typed requests like "choose a book for me", "pick a book about
+// dragons" or "surprise me". Anything after the request becomes preferences.
+const CHOOSE_PATTERN =
+  /^(?:please\s+)?(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:choose|pick|select|suggest|recommend)\s+(?:me\s+|us\s+)?(?:a|one|any)\s+(?:good\s+|great\s+)?book(?:\s+for\s+(?:me|us))?(.*)$/i;
+const CHOOSE_SHORT = /^(?:please\s+)?(?:surprise\s+(?:me|us)|you\s+(?:choose|pick)|(?:choose|pick)\s+(?:for\s+)?(?:me|us))[\s.!]*$/i;
+
+function parseChooseRequest(text: string) {
+  if (CHOOSE_SHORT.test(text)) {
+    return { choose: true, preferences: "" };
+  }
+  const match = text.match(CHOOSE_PATTERN);
+  if (!match) {
+    return { choose: false, preferences: "" };
+  }
+  const preferences = match[1]
+    .replace(/^[\s,.:;!?-]+/, "")
+    .replace(/\s*please[.!]*$/i, "")
+    .trim();
+  return { choose: true, preferences };
+}
+
+// Compares titles loosely ("The Hobbit" vs "hobbit").
+function normalizeTitle(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/^the\s+/, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+async function getPastPicks(userId: string) {
+  const result = await db.query<{ title: string; author: string }>(
+    `select title, author from book_pick where "userId" = $1 order by "createdAt" desc limit 100`,
+    [userId],
+  );
+  return result.rows;
+}
+
+function buildChooseRequest(
+  preferences: string,
+  pastPicks: { title: string; author: string }[],
+) {
+  const lines = ["Please choose a book for us."];
+  if (preferences) {
+    lines.push(`Our preferences: ${preferences}`);
+  } else {
+    const genre = GENRES[Math.floor(Math.random() * GENRES.length)];
+    lines.push(`For variety, choose a ${genre} book this time.`);
+  }
+  if (pastPicks.length) {
+    const list = pastPicks.map((pick) => `${pick.title} by ${pick.author}`).join("; ");
+    lines.push(
+      `We've already been given these books, so choose a different one: ${list}.`,
+    );
+  }
+  return lines.join(" ");
+}
+
 export async function generateEventPlan(
   _previous: PlanState,
   formData: FormData,
@@ -96,12 +178,16 @@ export async function generateEventPlan(
     return { error: "Subscribe to Book Club Plus to generate event plans." };
   }
 
-  const choose = formData.get("mode") === "choose";
   const values: PlanValues = {
     book: String(formData.get("book") ?? "").trim(),
     guests: String(formData.get("guests") ?? "").trim(),
     venue: String(formData.get("venue") ?? "").trim(),
   };
+
+  // Typing "choose a book for me" works the same as clicking the button.
+  const typed = parseChooseRequest(values.book);
+  const choose = formData.get("mode") === "choose" || typed.choose;
+  const preferences = typed.choose ? typed.preferences : values.book;
 
   if (!values.book && !choose) {
     return {
@@ -128,40 +214,64 @@ export async function generateEventPlan(
     return { values, error: "The AI service isn't set up yet (missing API key)." };
   }
 
-  const bookLine = choose
-    ? `Please choose a book for us.${values.book ? ` Our preferences: ${values.book}` : ""}`
-    : `The book we're reading (title or summary): ${values.book}`;
-  const request = [
-    bookLine,
-    `Number of guests: ${guests ?? "not given"}`,
-    `Venue: ${values.venue || "not given"}`,
-  ].join("\n");
-
   try {
+    // Books we've already picked for this user, so we can avoid repeats.
+    const pastPicks = choose ? await getPastPicks(session.user.id) : [];
+    const pickedBefore = new Set(pastPicks.map((pick) => normalizeTitle(pick.title)));
+
+    const bookLine = choose
+      ? buildChooseRequest(preferences, pastPicks)
+      : `The book we're reading (title or summary): ${values.book}`;
+    const details = [
+      `Number of guests: ${guests ?? "not given"}`,
+      `Venue: ${values.venue || "not given"}`,
+    ].join("\n");
+
     // Reads the API key from the ANTHROPIC_API_KEY environment variable.
     const client = new Anthropic();
-    const response = await client.beta.messages.parse({
-      model: "claude-sonnet-5-5",
-      max_tokens: 16000,
-      // If a safety check declines the request, Anthropic retries it on a
-      // fallback model automatically.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: {
-        effort: "medium",
-        format: betaZodOutputFormat(EventPlanSchema),
-      },
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: request }],
-    });
+    let plan: EventPlan | null = null;
+    let avoid = "";
+    // If Claude still picks a book it already chose, ask once more.
+    for (let attempt = 0; attempt < 2 && !plan; attempt++) {
+      const response = await client.beta.messages.parse({
+        model: "claude-sonnet-5-5",
+        max_tokens: 16000,
+        // If a safety check declines the request, Anthropic retries it on a
+        // fallback model automatically.
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        output_config: {
+          effort: "medium",
+          format: betaZodOutputFormat(EventPlanSchema),
+        },
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: `${bookLine}${avoid}\n${details}` }],
+      });
 
-    if (response.stop_reason === "refusal" || !response.parsed_output) {
-      return {
-        values,
-        error: "Sorry, we couldn't create a plan for that book. Try another title.",
-      };
+      if (response.stop_reason === "refusal" || !response.parsed_output) {
+        return {
+          values,
+          error: "Sorry, we couldn't create a plan for that book. Try another title.",
+        };
+      }
+      const result = response.parsed_output;
+      if (choose && pickedBefore.has(normalizeTitle(result.book.title)) && attempt === 0) {
+        avoid = ` Don't choose ${result.book.title}; it was already picked.`;
+        continue;
+      }
+      plan = result;
     }
-    return { values, plan: response.parsed_output };
+    if (!plan) {
+      return { values, error: "Something went wrong creating your plan. Please try again." };
+    }
+
+    if (choose) {
+      await db.query(
+        `insert into book_pick ("userId", title, author) values ($1, $2, $3)`,
+        [session.user.id, plan.book.title, plan.book.author],
+      );
+    }
+    return { values, plan };
   } catch (error) {
     console.error("Event plan generation failed:", error);
     if (error instanceof Anthropic.AuthenticationError) {

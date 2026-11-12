@@ -26,7 +26,9 @@ export default function EventPlanner() {
         <p className="mt-1 text-sm text-stone-600">
           Enter a title (and author, if you like) or paste a short summary of
           the book. Not sure what to read? Click <strong>Choose a book for
-          me</strong>, and add what you&apos;re in the mood for here if you like.
+          me</strong> or type &ldquo;choose a book for me&rdquo;, and add what
+          you&apos;re in the mood for if you like. You&apos;ll get a different
+          book each time.
         </p>
         <textarea
           id="book"

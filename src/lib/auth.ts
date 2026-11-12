@@ -18,11 +18,15 @@ export const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!);
 export const stripeTestMode =
   process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") ?? false;
 
-// Server-side auth setup. Accounts, sessions and subscriptions are stored in
-// the Neon database at DATABASE_URL. Better Auth also reads
-// BETTER_AUTH_SECRET and BETTER_AUTH_URL from the environment.
+// Connection to the Neon database at DATABASE_URL. Better Auth stores
+// accounts, sessions and subscriptions here; the planner also uses it to
+// remember which books it has picked for each user.
+export const db = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// Server-side auth setup. Better Auth also reads BETTER_AUTH_SECRET and
+// BETTER_AUTH_URL from the environment.
 export const auth = betterAuth({
-  database: new Pool({ connectionString: process.env.DATABASE_URL }),
+  database: db,
   emailAndPassword: {
     enabled: true,
   },
