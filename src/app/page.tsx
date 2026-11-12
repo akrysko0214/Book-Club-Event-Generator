@@ -92,9 +92,11 @@ export default function Home() {
 
         <p className="mt-6 max-w-2xl text-lg leading-8 text-stone-700 sm:text-xl">
           Planning a book event shouldn&apos;t feel like homework. Just enter
-          the book you&apos;re reading, and our AI creates a custom event
+          the book you&apos;re reading or a quick summary of it, or let us
+          choose a great book for you. Our AI then creates a custom event
           built around it: a theme, activities, snacks, drinks, discussion
-          prompts and more, all inspired by the story.
+          prompts and more, all inspired by the story, with spoiler warnings
+          so nobody&apos;s ending gets ruined.
         </p>
 
         <p className="mt-4 max-w-2xl text-lg leading-8 text-stone-700 sm:text-xl">

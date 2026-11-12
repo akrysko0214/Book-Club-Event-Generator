@@ -15,6 +15,8 @@ const Idea = z.object({
 // The exact shape Claude must answer in. The SDK checks the reply against it.
 const EventPlanSchema = z.object({
   book: z.object({ title: z.string(), author: z.string() }),
+  // Why this book was picked, when the user asked us to choose one.
+  pickReason: z.string().nullable(),
   theme: z.object({
     name: z.string(),
     description: z.string(),
@@ -28,6 +30,15 @@ const EventPlanSchema = z.object({
   readingList: z.array(
     z.object({ title: z.string(), author: z.string(), reason: z.string() }),
   ),
+  // Which sections reveal major plot points, so the page can warn readers.
+  spoilers: z.object({
+    theme: z.boolean(),
+    activities: z.boolean(),
+    snacks: z.boolean(),
+    drinks: z.boolean(),
+    hostingTips: z.boolean(),
+    discussionPrompts: z.boolean(),
+  }),
 });
 
 export type EventPlan = z.infer<typeof EventPlanSchema>;
@@ -46,8 +57,14 @@ export type PlanState = {
 };
 
 const MAX_GUESTS = 500;
+const MAX_BOOK_LENGTH = 2000;
 
-const SYSTEM_PROMPT = `You plan book club meetings. Given the book a club is currently reading, create a themed event inspired by that specific book: its setting, characters, era, mood and key moments.
+const SYSTEM_PROMPT = `You plan themed events for book lovers and book clubs. Create an event inspired by one specific book: its setting, characters, era, mood and key moments.
+
+The user describes the book in one of three ways:
+- A title (and maybe an author): plan around that book.
+- A summary of the book: work out which book it is if you can and use its real title and author. If it doesn't match a book you know, build the plan from the summary, use the title they mention or a short descriptive title, and set the author to "Unknown".
+- They ask you to choose: pick a well-loved, widely available book that suits a group discussion and the event details. Treat anything they wrote as preferences (genre, mood, length, books they liked). Explain your pick in pickReason in 1-2 sentences. Set pickReason to null when you didn't choose the book.
 
 Fit the whole plan to the number of guests and the venue you're given. Scale snack and drink amounts to the group, and say roughly how much to make or buy in each description (for example "about 3 dozen" or "2 gallons"). Choose activities that work for that group size, such as splitting a large group into small tables, and decorations that suit the venue's size and rules (for example, nothing that needs tape or an open flame in a library or rented room). If the guest count or venue is missing, assume about 8 guests in someone's home.
 
@@ -60,6 +77,7 @@ Include:
 - hostingTips: 3-5 practical tips for this group size and venue (seating, setup, timing, serving, budget)
 - discussionPrompts: 8 thoughtful, open-ended questions; flag any major spoilers with "(Spoiler)" at the start
 - readingList: 5 books readers who enjoyed this one would likely love, each with a one-sentence reason
+- spoilers: for each section, true if anything in it reveals a major plot point (a twist, the ending, a character's death or a big secret), otherwise false. Guests may not have finished the book, so mark it true whenever in doubt.
 
 Keep ideas practical and budget-friendly. If you don't recognize the book, build the plan from what the title suggests and say so in the theme description.`;
 
@@ -78,17 +96,24 @@ export async function generateEventPlan(
     return { error: "Subscribe to Book Club Plus to generate event plans." };
   }
 
+  const choose = formData.get("mode") === "choose";
   const values: PlanValues = {
     book: String(formData.get("book") ?? "").trim(),
     guests: String(formData.get("guests") ?? "").trim(),
     venue: String(formData.get("venue") ?? "").trim(),
   };
 
-  if (!values.book) {
-    return { values, error: "Please enter the book your club is reading." };
+  if (!values.book && !choose) {
+    return {
+      values,
+      error: "Enter a book title or summary, or click Choose a book for me.",
+    };
   }
-  if (values.book.length > 200) {
-    return { values, error: "Please keep the book title under 200 characters." };
+  if (values.book.length > MAX_BOOK_LENGTH) {
+    return {
+      values,
+      error: `Please keep this under ${MAX_BOOK_LENGTH} characters.`,
+    };
   }
   const guests = values.guests ? Number(values.guests) : null;
   if (guests !== null && (!Number.isInteger(guests) || guests < 1 || guests > MAX_GUESTS)) {
@@ -103,8 +128,11 @@ export async function generateEventPlan(
     return { values, error: "The AI service isn't set up yet (missing API key)." };
   }
 
+  const bookLine = choose
+    ? `Please choose a book for us.${values.book ? ` Our preferences: ${values.book}` : ""}`
+    : `The book we're reading (title or summary): ${values.book}`;
   const request = [
-    `Our book club is reading: ${values.book}`,
+    bookLine,
     `Number of guests: ${guests ?? "not given"}`,
     `Venue: ${values.venue || "not given"}`,
   ].join("\n");
