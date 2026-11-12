@@ -29,6 +29,17 @@ const audiences = [
   },
 ];
 
+const testimonials = [
+  {
+    quote: "The results were really useful. The events were fun and easy to put on.",
+    name: "Anna P.",
+  },
+  {
+    quote: "This site took my book club planning to the next level.",
+    name: "Adam M.",
+  },
+];
+
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-amber-50 text-stone-900">
@@ -126,6 +137,28 @@ export default function Home() {
                 <h3 className="text-lg font-semibold">{audience.title}</h3>
                 <p className="mt-2 text-stone-700">{audience.text}</p>
               </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-16 w-full">
+          <h2 className="text-2xl font-bold sm:text-3xl">What readers are saying</h2>
+          <div className="mt-6 grid gap-6 sm:grid-cols-2">
+            {testimonials.map((testimonial) => (
+              <figure
+                key={testimonial.name}
+                className="rounded-2xl bg-white p-6 text-left shadow-sm ring-1 ring-amber-100"
+              >
+                <span aria-hidden="true" className="block text-5xl leading-none text-amber-400">
+                  &ldquo;
+                </span>
+                <blockquote className="mt-1 text-lg text-stone-800">
+                  {testimonial.quote}
+                </blockquote>
+                <figcaption className="mt-4 font-semibold text-stone-600">
+                  &mdash; {testimonial.name}
+                </figcaption>
+              </figure>
             ))}
           </div>
         </section>
