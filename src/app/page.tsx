@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Bookshelf, BookScene } from "./book-art";
+import { Bookshelf } from "./book-art";
 import PhotoGallery from "./photo-gallery";
 
 const features = [
@@ -55,7 +56,28 @@ export default function Home() {
           Booked and Busy
         </h1>
 
-        <BookScene className="mt-8 w-full max-w-md" />
+        <figure className="mt-8 w-full max-w-2xl">
+          <div className="relative aspect-[16/9] overflow-hidden rounded-2xl shadow-sm ring-1 ring-amber-100">
+            <Image
+              src="https://images.unsplash.com/photo-1588666309990-d68f08e3d4a6?w=1600&q=80&fit=crop&auto=format"
+              alt="An open book beside a cup of coffee and flowers"
+              fill
+              preload
+              sizes="(min-width: 672px) 672px, 100vw"
+              className="object-cover"
+            />
+          </div>
+          <figcaption className="mt-2 text-right text-xs text-stone-500">
+            <a
+              href="https://unsplash.com/photos/book-and-coffee-with-lily-flowers-g827ZOCwt30"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              Photo: Julia Kicova / Unsplash
+            </a>
+          </figcaption>
+        </figure>
 
         <p className="mt-6 max-w-2xl text-lg leading-8 text-stone-700 sm:text-xl">
           Planning a book event shouldn&apos;t feel like homework. Just enter
