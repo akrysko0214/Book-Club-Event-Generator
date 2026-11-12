@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Bookshelf, BookScene } from "./book-art";
+import PhotoGallery from "./photo-gallery";
 
 const features = [
   {
@@ -89,6 +90,8 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        <PhotoGallery />
 
         <section className="mt-16 w-full">
           <h2 className="text-2xl font-bold sm:text-3xl">Who it&apos;s for</h2>
