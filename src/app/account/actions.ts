@@ -5,6 +5,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { auth, db } from "@/lib/auth";
+import { formatEventTime } from "@/lib/event-format";
 import { hasActiveSubscription } from "@/lib/subscription";
 
 const Idea = z.object({
@@ -30,6 +31,10 @@ const EventPlanSchema = z.object({
   readingList: z.array(
     z.object({ title: z.string(), author: z.string(), reason: z.string() }),
   ),
+  // A timed run of show for the evening.
+  schedule: z.array(z.object({ time: z.string(), activity: z.string() })),
+  // A themed invitation the host can email to guests.
+  invitation: z.object({ subject: z.string(), body: z.string() }),
   // Which sections reveal major plot points, so the page can warn readers.
   spoilers: z.object({
     theme: z.boolean(),
@@ -48,16 +53,31 @@ export type PlanValues = {
   book: string;
   guests: string;
   venue: string;
+  eventTime: string;
+  guestEmails: string;
+};
+
+// A saved plan plus the event details it was made for.
+export type SavedEvent = {
+  id: string;
+  plan: EventPlan;
+  guests: number | null;
+  venue: string | null;
+  eventTime: string | null;
+  guestEmails: string[];
+  invitationsSentAt: string | null;
 };
 
 export type PlanState = {
-  plan?: EventPlan;
+  event?: SavedEvent;
   error?: string;
   values?: PlanValues;
 };
 
 const MAX_GUESTS = 500;
 const MAX_BOOK_LENGTH = 2000;
+const MAX_INVITES = 50;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SYSTEM_PROMPT = `You plan themed events for book lovers and book clubs. Create an event inspired by one specific book: its setting, characters, era, mood and key moments.
 
@@ -77,6 +97,8 @@ Include:
 - hostingTips: 3-5 practical tips for this group size and venue (seating, setup, timing, serving, budget)
 - discussionPrompts: 8 thoughtful, open-ended questions; flag any major spoilers with "(Spoiler)" at the start
 - readingList: 5 books readers who enjoyed this one would likely love, each with a one-sentence reason
+- schedule: 6-9 steps for the evening, from guests arriving to wrapping up. If a start time is given, use clock times starting then (for example "7:00 PM"); otherwise use times relative to the start (for example "Start", "+20 min").
+- invitation: a themed email invitation in the voice of the host. subject: short and inviting. body: 2-3 short paragraphs in plain text (no markdown) that set the mood of the theme, give the date and time, the venue, and anything guests should bring or wear, and ask them to reply to let the host know if they can come. Don't reveal spoilers. If the date, time or venue isn't given, write "details to come" for it. Don't add a signature; the host's name is added for you.
 - spoilers: for each section, true if anything in it reveals a major plot point (a twist, the ending, a character's death or a big secret), otherwise false. Guests may not have finished the book, so mark it true whenever in doubt.
 
 Keep ideas practical and budget-friendly. If you don't recognize the book, build the plan from what the title suggests and say so in the theme description.`;
@@ -182,6 +204,8 @@ export async function generateEventPlan(
     book: String(formData.get("book") ?? "").trim(),
     guests: String(formData.get("guests") ?? "").trim(),
     venue: String(formData.get("venue") ?? "").trim(),
+    eventTime: String(formData.get("eventTime") ?? "").trim(),
+    guestEmails: String(formData.get("guestEmails") ?? "").trim(),
   };
 
   // Typing "choose a book for me" works the same as clicking the button.
@@ -208,6 +232,25 @@ export async function generateEventPlan(
   if (values.venue.length > 150) {
     return { values, error: "Please keep the venue under 150 characters." };
   }
+  if (values.eventTime && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(values.eventTime)) {
+    return { values, error: "Please pick a valid date and time." };
+  }
+  // Guest emails can be separated by commas, spaces or new lines.
+  const guestEmails = [
+    ...new Set(
+      values.guestEmails
+        .split(/[\s,;]+/)
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+  const badEmails = guestEmails.filter((email) => !EMAIL_PATTERN.test(email));
+  if (badEmails.length) {
+    return { values, error: `These don't look like email addresses: ${badEmails.join(", ")}` };
+  }
+  if (guestEmails.length > MAX_INVITES) {
+    return { values, error: `You can invite up to ${MAX_INVITES} guests per event.` };
+  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error("ANTHROPIC_API_KEY is not set.");
@@ -223,8 +266,9 @@ export async function generateEventPlan(
       ? buildChooseRequest(preferences, pastPicks)
       : `The book we're reading (title or summary): ${values.book}`;
     const details = [
-      `Number of guests: ${guests ?? "not given"}`,
+      `Number of guests: ${guests ?? (guestEmails.length || "not given")}`,
       `Venue: ${values.venue || "not given"}`,
+      `Date and time: ${values.eventTime ? formatEventTime(values.eventTime) : "not given"}`,
     ].join("\n");
 
     // Reads the API key from the ANTHROPIC_API_KEY environment variable.
@@ -271,7 +315,34 @@ export async function generateEventPlan(
         [session.user.id, plan.book.title, plan.book.author],
       );
     }
-    return { values, plan };
+
+    // Save the plan so it shows up on the My events page.
+    const event: SavedEvent = {
+      id: crypto.randomUUID(),
+      plan,
+      guests: guests ?? (guestEmails.length || null),
+      venue: values.venue || null,
+      eventTime: values.eventTime || null,
+      guestEmails,
+      invitationsSentAt: null,
+    };
+    await db.query(
+      `insert into event_plan (id, "userId", "bookTitle", "bookAuthor", "themeName", guests, venue, "eventTime", "guestEmails", plan)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        event.id,
+        session.user.id,
+        plan.book.title,
+        plan.book.author,
+        plan.theme.name,
+        event.guests,
+        event.venue,
+        event.eventTime,
+        event.guestEmails,
+        JSON.stringify(plan),
+      ],
+    );
+    return { values, event };
   } catch (error) {
     console.error("Event plan generation failed:", error);
     if (error instanceof Anthropic.AuthenticationError) {

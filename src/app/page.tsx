@@ -13,6 +13,10 @@ const features = [
     text: "Serve snacks that match the story and lead the conversation with thoughtful questions about the book.",
   },
   {
+    title: "Invitations sent for you",
+    text: "Get a themed invitation with your date, time and venue, emailed to every guest with one click.",
+  },
+  {
     title: "Your next reading list",
     text: "Discover books you and your guests are likely to enjoy next if you loved this one.",
   },
@@ -100,9 +104,12 @@ export default function Home() {
         </p>
 
         <p className="mt-4 max-w-2xl text-lg leading-8 text-stone-700 sm:text-xl">
-          You&apos;ll also get a personalized reading list of books to try
-          next if you enjoyed this one, so you can spend less time
-          organizing and more time talking about books.
+          Add your date, time, venue and guests&apos; emails, and we&apos;ll
+          write a themed invitation and send it to everyone for you, along
+          with a schedule for the evening. Every plan is saved to your My
+          events page, and you&apos;ll get a personalized reading list of
+          books to try next, so you can spend less time organizing and more
+          time talking about books.
         </p>
 
         <p className="mt-4 max-w-2xl text-lg leading-8 text-stone-700 sm:text-xl">
@@ -114,7 +121,7 @@ export default function Home() {
           of one party platter, you can plan every event for the month.
         </p>
 
-        <div className="mt-14 grid w-full gap-6 sm:grid-cols-3">
+        <div className="mt-14 grid w-full gap-6 sm:grid-cols-2">
           {features.map((feature) => (
             <div
               key={feature.title}

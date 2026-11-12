@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { auth, DEMO_EMAIL, stripeTestMode } from "@/lib/auth";
+import { listEvents } from "@/lib/events";
+import { isEmailConfigured } from "@/lib/mailer";
 import { hasActiveSubscription } from "@/lib/subscription";
 import { DemoCheckoutCard, ManageBillingButton, SubscribeCard } from "./billing";
 import EventPlanner from "./event-planner";
@@ -37,6 +39,7 @@ async function AccountDetails() {
   const { user } = session;
   const subscribed = await hasActiveSubscription(requestHeaders);
   const showDemoCheckout = user.email === DEMO_EMAIL && stripeTestMode;
+  const recentEvents = (await listEvents(user.id)).slice(0, 3);
 
   return (
     <>
@@ -45,7 +48,15 @@ async function AccountDetails() {
           <h1 className="text-3xl font-bold">Hi, {user.name}!</h1>
           <p className="mt-1 text-stone-600">You&apos;re signed in as {user.email}.</p>
         </div>
-        <SignOutButton />
+        <div className="flex gap-3">
+          <Link
+            href="/events"
+            className="rounded-lg border border-stone-300 px-4 py-2 font-semibold hover:bg-stone-100"
+          >
+            My events
+          </Link>
+          <SignOutButton />
+        </div>
       </div>
 
       {subscribed ? (
@@ -58,7 +69,27 @@ async function AccountDetails() {
             <ManageBillingButton />
           </div>
           {showDemoCheckout && <DemoCheckoutCard />}
-          <EventPlanner />
+          {recentEvents.length > 0 && (
+            <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-amber-100">
+              <div className="flex items-baseline justify-between gap-4">
+                <h2 className="text-xl font-semibold">Your recent events</h2>
+                <Link href="/events" className="text-sm font-semibold text-amber-800 underline">
+                  See all
+                </Link>
+              </div>
+              <ul className="mt-3 divide-y divide-stone-100">
+                {recentEvents.map((event) => (
+                  <li key={event.id}>
+                    <Link href={`/events/${event.id}`} className="block py-2 hover:text-amber-800">
+                      <span className="font-semibold">{event.plan.theme.name}</span>
+                      <span className="text-stone-600"> · {event.plan.book.title}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <EventPlanner emailReady={isEmailConfigured()} />
         </>
       ) : (
         <SubscribeCard testMode={stripeTestMode} />
