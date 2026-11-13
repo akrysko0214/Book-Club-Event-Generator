@@ -1,18 +1,10 @@
+import Link from "next/link";
 import { describeEvent } from "@/lib/event-format";
 import type { SavedEvent } from "./actions";
-import SendInvitations from "./send-invitations";
 
 // A full event plan. Used right after generating one and on the My events
 // pages.
-export default function PlanResults({
-  event,
-  emailReady,
-  testEmailDefault,
-}: {
-  event: SavedEvent;
-  emailReady: boolean;
-  testEmailDefault: string;
-}) {
+export default function PlanResults({ event }: { event: SavedEvent }) {
   const { plan } = event;
   const eventNote = describeEvent(event);
 
@@ -34,22 +26,7 @@ export default function PlanResults({
         <p className="mt-3 text-stone-700">{plan.theme.description}</p>
       </div>
 
-      <Section title="Your invitation">
-        <div className="rounded-xl bg-amber-50 p-5 ring-1 ring-amber-200">
-          <p className="text-sm text-stone-500">Subject</p>
-          <p className="font-semibold">{plan.invitation.subject}</p>
-          <div className="mt-4 space-y-3 whitespace-pre-line text-stone-700">
-            {plan.invitation.body}
-          </div>
-        </div>
-        <SendInvitations
-          eventId={event.id}
-          guestEmails={event.guestEmails}
-          sentAt={event.invitationsSentAt}
-          emailReady={emailReady}
-          testEmailDefault={testEmailDefault}
-        />
-      </Section>
+      <InvitationsCard event={event} />
 
       <Section title="Schedule for the evening">
         <ol className="space-y-2">
@@ -99,6 +76,33 @@ export default function PlanResults({
         </ul>
       </Section>
     </div>
+  );
+}
+
+// Invitations are their own step, on a separate page for each event.
+function InvitationsCard({ event }: { event: SavedEvent }) {
+  const status = event.invitationsSentAt
+    ? `Sent to ${event.guestEmails.length} guest${event.guestEmails.length === 1 ? "" : "s"}.`
+    : event.inviteSubject
+      ? "You have a draft invitation ready to edit and send."
+      : "Write a themed invitation with AI, edit it, and email it to your guests.";
+  return (
+    <section className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-amber-100 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h3 className="text-xl font-semibold">Invitations</h3>
+        <p className="mt-1 text-stone-600">{status}</p>
+      </div>
+      <Link
+        href={`/events/${event.id}/invite`}
+        className="shrink-0 rounded-lg bg-stone-900 px-5 py-2.5 text-center font-semibold text-white hover:bg-stone-700"
+      >
+        {event.invitationsSentAt
+          ? "View invitation"
+          : event.inviteSubject
+            ? "Edit and send"
+            : "Create invitations"}
+      </Link>
+    </section>
   );
 }
 

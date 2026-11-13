@@ -8,13 +8,7 @@ import PlanResults from "./plan-results";
 const inputClass =
   "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200";
 
-export default function EventPlanner({
-  emailReady,
-  testEmailDefault,
-}: {
-  emailReady: boolean;
-  testEmailDefault: string;
-}) {
+export default function EventPlanner() {
   const [state, formAction, pending] = useActionState<PlanState, FormData>(
     generateEventPlan,
     {},
@@ -69,31 +63,19 @@ export default function EventPlanner({
           </label>
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-[16rem_1fr]">
-          <label className="block text-sm font-medium">
-            Date and time
-            <input
-              name="eventTime"
-              type="datetime-local"
-              defaultValue={state.values?.eventTime}
-              className={`mt-1 ${inputClass}`}
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            Guest emails (for invitations)
-            <textarea
-              name="guestEmails"
-              rows={2}
-              defaultValue={state.values?.guestEmails}
-              placeholder="anna@example.com, adam@example.com"
-              className={`mt-1 ${inputClass}`}
-            />
-          </label>
-        </div>
+        <label className="mt-4 block max-w-xs text-sm font-medium">
+          Date and time
+          <input
+            name="eventTime"
+            type="datetime-local"
+            defaultValue={state.values?.eventTime}
+            className={`mt-1 ${inputClass}`}
+          />
+        </label>
         <p className="mt-2 text-xs text-stone-500">
           All optional. The plan scales snacks, drinks, decorations and
-          activities to fit, builds a schedule from your start time, and writes
-          a themed invitation you can email to your guests.
+          activities to fit, and builds a schedule from your start time. Once
+          your plan is ready, you can create and send invitations.
         </p>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -139,11 +121,7 @@ export default function EventPlanner({
             </Link>
             .
           </p>
-          <PlanResults
-            event={state.event}
-            emailReady={emailReady}
-            testEmailDefault={testEmailDefault}
-          />
+          <PlanResults event={state.event} />
         </div>
       )}
     </div>

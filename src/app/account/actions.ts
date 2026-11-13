@@ -33,8 +33,6 @@ const EventPlanSchema = z.object({
   ),
   // A timed run of show for the evening.
   schedule: z.array(z.object({ time: z.string(), activity: z.string() })),
-  // A themed invitation the host can email to guests.
-  invitation: z.object({ subject: z.string(), body: z.string() }),
   // Which sections reveal major plot points, so the page can warn readers.
   spoilers: z.object({
     theme: z.boolean(),
@@ -54,7 +52,6 @@ export type PlanValues = {
   guests: string;
   venue: string;
   eventTime: string;
-  guestEmails: string;
 };
 
 // A saved plan plus the event details it was made for.
@@ -66,6 +63,9 @@ export type SavedEvent = {
   eventTime: string | null;
   guestEmails: string[];
   invitationsSentAt: string | null;
+  // The invitation draft from the Invitations page, if one was made.
+  inviteSubject: string | null;
+  inviteBody: string | null;
 };
 
 export type PlanState = {
@@ -76,8 +76,6 @@ export type PlanState = {
 
 const MAX_GUESTS = 500;
 const MAX_BOOK_LENGTH = 2000;
-const MAX_INVITES = 50;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SYSTEM_PROMPT = `You plan themed events for book lovers and book clubs. Create an event inspired by one specific book: its setting, characters, era, mood and key moments.
 
@@ -98,7 +96,6 @@ Include:
 - discussionPrompts: 8 thoughtful, open-ended questions; flag any major spoilers with "(Spoiler)" at the start
 - readingList: 5 books readers who enjoyed this one would likely love, each with a one-sentence reason
 - schedule: 6-9 steps for the evening, from guests arriving to wrapping up. If a start time is given, use clock times starting then (for example "7:00 PM"); otherwise use times relative to the start (for example "Start", "+20 min").
-- invitation: a themed email invitation in the voice of the host. subject: short and inviting. body: 2-3 short paragraphs in plain text (no markdown) that set the mood of the theme, give the date and time, the venue, and anything guests should bring or wear, and ask them to reply to let the host know if they can come. Don't reveal spoilers. If the date, time or venue isn't given, write "details to come" for it. Don't add a signature; the host's name is added for you.
 - spoilers: for each section, true if anything in it reveals a major plot point (a twist, the ending, a character's death or a big secret), otherwise false. Guests may not have finished the book, so mark it true whenever in doubt.
 
 Keep ideas practical and budget-friendly. If you don't recognize the book, build the plan from what the title suggests and say so in the theme description.`;
@@ -205,7 +202,6 @@ export async function generateEventPlan(
     guests: String(formData.get("guests") ?? "").trim(),
     venue: String(formData.get("venue") ?? "").trim(),
     eventTime: String(formData.get("eventTime") ?? "").trim(),
-    guestEmails: String(formData.get("guestEmails") ?? "").trim(),
   };
 
   // Typing "choose a book for me" works the same as clicking the button.
@@ -235,22 +231,6 @@ export async function generateEventPlan(
   if (values.eventTime && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(values.eventTime)) {
     return { values, error: "Please pick a valid date and time." };
   }
-  // Guest emails can be separated by commas, spaces or new lines.
-  const guestEmails = [
-    ...new Set(
-      values.guestEmails
-        .split(/[\s,;]+/)
-        .map((email) => email.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  ];
-  const badEmails = guestEmails.filter((email) => !EMAIL_PATTERN.test(email));
-  if (badEmails.length) {
-    return { values, error: `These don't look like email addresses: ${badEmails.join(", ")}` };
-  }
-  if (guestEmails.length > MAX_INVITES) {
-    return { values, error: `You can invite up to ${MAX_INVITES} guests per event.` };
-  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error("ANTHROPIC_API_KEY is not set.");
@@ -266,7 +246,7 @@ export async function generateEventPlan(
       ? buildChooseRequest(preferences, pastPicks)
       : `The book we're reading (title or summary): ${values.book}`;
     const details = [
-      `Number of guests: ${guests ?? (guestEmails.length || "not given")}`,
+      `Number of guests: ${guests ?? "not given"}`,
       `Venue: ${values.venue || "not given"}`,
       `Date and time: ${values.eventTime ? formatEventTime(values.eventTime) : "not given"}`,
     ].join("\n");
@@ -320,11 +300,13 @@ export async function generateEventPlan(
     const event: SavedEvent = {
       id: crypto.randomUUID(),
       plan,
-      guests: guests ?? (guestEmails.length || null),
+      guests,
       venue: values.venue || null,
       eventTime: values.eventTime || null,
-      guestEmails,
+      guestEmails: [],
       invitationsSentAt: null,
+      inviteSubject: null,
+      inviteBody: null,
     };
     await db.query(
       `insert into event_plan (id, "userId", "bookTitle", "bookAuthor", "themeName", guests, venue, "eventTime", "guestEmails", plan)

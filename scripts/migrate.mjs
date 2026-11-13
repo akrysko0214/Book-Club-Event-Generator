@@ -59,6 +59,9 @@ await db.query(
 await db.query(
   `alter table event_plan add column if not exists "testInvitesSent" integer not null default 0`,
 );
+// The invitation draft the host generates and edits before sending.
+await db.query(`alter table event_plan add column if not exists "inviteSubject" text`);
+await db.query(`alter table event_plan add column if not exists "inviteBody" text`);
 console.log("event_plan table is ready.");
 
 await db.end();

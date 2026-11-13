@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { auth, DEMO_EMAIL, stripeTestMode } from "@/lib/auth";
 import { listEvents } from "@/lib/events";
-import { isEmailConfigured } from "@/lib/mailer";
 import { hasActiveSubscription } from "@/lib/subscription";
 import { DemoCheckoutCard, ManageBillingButton, SubscribeCard } from "./billing";
 import EventPlanner from "./event-planner";
@@ -89,10 +88,7 @@ async function AccountDetails() {
               </ul>
             </div>
           )}
-          <EventPlanner
-            emailReady={isEmailConfigured()}
-            testEmailDefault={user.email === DEMO_EMAIL ? "" : user.email}
-          />
+          <EventPlanner />
         </>
       ) : (
         <SubscribeCard testMode={stripeTestMode} />
