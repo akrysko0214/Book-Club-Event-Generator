@@ -55,6 +55,10 @@ await db.query(`
 await db.query(
   `create index if not exists event_plan_user_idx on event_plan ("userId", "createdAt" desc)`,
 );
+// How many test invitations were sent per event, to limit test sends.
+await db.query(
+  `alter table event_plan add column if not exists "testInvitesSent" integer not null default 0`,
+);
 console.log("event_plan table is ready.");
 
 await db.end();

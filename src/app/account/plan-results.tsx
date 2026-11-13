@@ -7,9 +7,11 @@ import SendInvitations from "./send-invitations";
 export default function PlanResults({
   event,
   emailReady,
+  testEmailDefault,
 }: {
   event: SavedEvent;
   emailReady: boolean;
+  testEmailDefault: string;
 }) {
   const { plan } = event;
   const eventNote = describeEvent(event);
@@ -45,6 +47,7 @@ export default function PlanResults({
           guestEmails={event.guestEmails}
           sentAt={event.invitationsSentAt}
           emailReady={emailReady}
+          testEmailDefault={testEmailDefault}
         />
       </Section>
 

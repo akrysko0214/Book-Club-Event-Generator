@@ -89,7 +89,10 @@ async function AccountDetails() {
               </ul>
             </div>
           )}
-          <EventPlanner emailReady={isEmailConfigured()} />
+          <EventPlanner
+            emailReady={isEmailConfigured()}
+            testEmailDefault={user.email === DEMO_EMAIL ? "" : user.email}
+          />
         </>
       ) : (
         <SubscribeCard testMode={stripeTestMode} />

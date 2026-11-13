@@ -1,26 +1,38 @@
-import nodemailer from "nodemailer";
+import { Resend, type ErrorResponse } from "resend";
 
-// Sends email through any SMTP service (Gmail, Brevo, Resend, ...). The
-// settings come from environment variables, never from the code:
-//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
-//   EMAIL_FROM  e.g. "Booked and Busy <bookedandbusy.invites@gmail.com>"
+// Invitations are sent with Resend from the verified getbookedandbusy.app
+// domain. The API key comes from the RESEND_API_KEY environment variable and
+// is only ever used on the server.
+export const INVITATION_FROM = "Booked and Busy <invitations@getbookedandbusy.app>";
+
 export function isEmailConfigured() {
-  return Boolean(
-    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
-  );
+  return Boolean(process.env.RESEND_API_KEY);
 }
 
-export function createMailer() {
-  const port = Number(process.env.SMTP_PORT || 465);
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port,
-    // Port 465 uses a secure connection from the start; 587 upgrades to one.
-    secure: port === 465,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-  });
+export function createResend() {
+  return new Resend(process.env.RESEND_API_KEY);
 }
 
-export function fromAddress() {
-  return process.env.EMAIL_FROM || `Booked and Busy <${process.env.SMTP_USER}>`;
+// Turns a Resend error into a message a host can act on. The full error is
+// logged on the server for debugging.
+export function describeEmailError(error: ErrorResponse) {
+  switch (error.name) {
+    case "missing_api_key":
+    case "invalid_api_key":
+    case "restricted_api_key":
+      return "Email sending isn't set up correctly (API key problem).";
+    case "invalid_from_address":
+      return "The sending address isn't verified with Resend yet.";
+    case "rate_limit_exceeded":
+      return "Too many emails at once. Please wait a minute and try again.";
+    case "daily_quota_exceeded":
+    case "monthly_quota_exceeded":
+      return "The email sending limit has been reached. Please try again later.";
+    case "validation_error":
+    case "invalid_parameter":
+    case "missing_required_field":
+      return `Resend couldn't send this email: ${error.message}`;
+    default:
+      return "Something went wrong sending the invitations. Please try again.";
+  }
 }

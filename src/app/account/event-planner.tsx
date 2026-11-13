@@ -8,7 +8,13 @@ import PlanResults from "./plan-results";
 const inputClass =
   "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200";
 
-export default function EventPlanner({ emailReady }: { emailReady: boolean }) {
+export default function EventPlanner({
+  emailReady,
+  testEmailDefault,
+}: {
+  emailReady: boolean;
+  testEmailDefault: string;
+}) {
   const [state, formAction, pending] = useActionState<PlanState, FormData>(
     generateEventPlan,
     {},
@@ -133,7 +139,11 @@ export default function EventPlanner({ emailReady }: { emailReady: boolean }) {
             </Link>
             .
           </p>
-          <PlanResults event={state.event} emailReady={emailReady} />
+          <PlanResults
+            event={state.event}
+            emailReady={emailReady}
+            testEmailDefault={testEmailDefault}
+          />
         </div>
       )}
     </div>

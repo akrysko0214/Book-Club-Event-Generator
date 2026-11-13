@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import PlanResults from "@/app/account/plan-results";
-import { auth } from "@/lib/auth";
+import { auth, DEMO_EMAIL } from "@/lib/auth";
 import { getEvent } from "@/lib/events";
 import { isEmailConfigured } from "@/lib/mailer";
 
@@ -38,5 +38,13 @@ async function EventDetails({ params }: { params: Promise<{ id: string }> }) {
   if (!event) {
     notFound();
   }
-  return <PlanResults event={event} emailReady={isEmailConfigured()} />;
+  // The demo account's address isn't a real inbox, so it starts blank.
+  const testEmailDefault = session.user.email === DEMO_EMAIL ? "" : session.user.email;
+  return (
+    <PlanResults
+      event={event}
+      emailReady={isEmailConfigured()}
+      testEmailDefault={testEmailDefault}
+    />
+  );
 }
